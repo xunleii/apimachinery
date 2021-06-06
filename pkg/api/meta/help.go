@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -255,6 +256,11 @@ func SetList(list runtime.Object, objects []runtime.Object) error {
 			dest.Set(src)
 		} else if src.Type().ConvertibleTo(dest.Type()) {
 			dest.Set(src.Convert(dest.Type()))
+		} else if uobj, ok := objects[i].(*unstructured.Unstructured); ok {
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, dest.Addr().Interface())
+			if err != nil {
+				return fmt.Errorf("item[%d]: can't convert %T into %v: %w", i, uobj, dest.Type(), err)
+			}
 		} else {
 			return fmt.Errorf("item[%d]: can't assign or convert %v into %v", i, src.Type(), dest.Type())
 		}
